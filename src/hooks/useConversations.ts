@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { logError } from '@/lib/logger';
 import type { Database } from '@/integrations/supabase/types';
 
 type Conversation = Database['public']['Tables']['conversations']['Row'];
@@ -44,7 +45,7 @@ export const useConversations = () => {
       .order('updated_at', { ascending: false });
 
     if (fetchError) {
-      console.error('Error fetching conversations:', fetchError);
+      logError('Error fetching conversations', fetchError, 'useConversations');
       setError(fetchError.message);
     } else {
       setConversations(data || []);

@@ -30,6 +30,8 @@ import { useAISuggestions } from '@/hooks/useAISuggestions';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { sanitizeTextContent } from '@/lib/security';
+import { logError } from '@/lib/logger';
 
 interface Message {
   id: string;
@@ -102,11 +104,15 @@ const ChatRoom = () => {
       }
 
       // Fetch messages
-      const { data: messagesData } = await supabase
+      const { data: messagesData, error: messagesError } = await supabase
         .from('messages')
         .select('*')
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true });
+
+      if (messagesError) {
+        logError('Error fetching messages', messagesError, 'ChatRoom');
+      }
 
       if (messagesData) {
         setMessages(messagesData);
@@ -161,16 +167,33 @@ const ChatRoom = () => {
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !conversation) return;
 
-    // Save message to database directly
-    await supabase.from('messages').insert({
-      conversation_id: conversation.id,
-      workspace_id: workspace?.id,
-      content: newMessage,
-      sender_type: 'agent',
-    });
+    // Sanitize message before saving
+    const sanitizedMessage = sanitizeTextContent(newMessage.trim());
+    
+    if (!sanitizedMessage) {
+      logError('Attempted to send empty message after sanitization', undefined, 'ChatRoom');
+      return;
+    }
 
-    setNewMessage('');
-    clearSuggestions();
+    try {
+      // Save message to database with sanitized content
+      const { error } = await supabase.from('messages').insert({
+        conversation_id: conversation.id,
+        workspace_id: workspace?.id,
+        content: sanitizedMessage,
+        sender_type: 'agent',
+      });
+
+      if (error) {
+        logError('Error saving message to database', error, 'ChatRoom');
+        throw error;
+      }
+
+      setNewMessage('');
+      clearSuggestions();
+    } catch (error) {
+      logError('Failed to send message', error instanceof Error ? error : new Error(String(error)), 'ChatRoom');
+    }
   };
 
   const handleUseSuggestion = (text: string) => {

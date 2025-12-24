@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { logError } from '@/lib/logger';
 import { useEffect, useRef, useCallback } from 'react';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -81,7 +82,7 @@ export function useWhatsAppConnections() {
       
       return false;
     } catch (error) {
-      console.error('Error checking connection status:', error);
+      logError('Error checking connection status', error instanceof Error ? error : new Error(String(error)), 'useWhatsAppConnections');
       return false;
     }
   }, [toast]);
@@ -190,7 +191,7 @@ export function useWhatsAppConnections() {
             }
           }
         } catch (err) {
-          console.error('Error polling connection status:', err);
+          logError('Error polling connection status', err instanceof Error ? err : new Error(String(err)), 'useWhatsAppConnections');
         }
       }
     }, 5000); // Poll every 5 seconds

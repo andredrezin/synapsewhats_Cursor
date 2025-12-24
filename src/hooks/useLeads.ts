@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { logError } from '@/lib/logger';
 import type { Database } from '@/integrations/supabase/types';
 
 type Lead = Database['public']['Tables']['leads']['Row'];
@@ -38,7 +39,7 @@ export const useLeads = () => {
       .order('created_at', { ascending: false });
 
     if (fetchError) {
-      console.error('Error fetching leads:', fetchError);
+      logError('Error fetching leads', fetchError, 'useLeads');
       setError(fetchError.message);
     } else {
       // Transform data to match expected interface
