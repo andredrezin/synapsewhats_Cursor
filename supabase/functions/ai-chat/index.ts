@@ -16,6 +16,111 @@ const log = (level: string, message: string, data?: Record<string, unknown>) => 
   }));
 };
 
+// Rate limiting helper
+const getClientIP = (req: Request): string => {
+  const forwarded = req.headers.get('x-forwarded-for');
+  if (forwarded) return forwarded.split(',')[0].trim();
+  const realIP = req.headers.get('x-real-ip');
+  if (realIP) return realIP;
+  return 'unknown';
+};
+
+interface RateLimitResult {
+  allowed: boolean;
+  remaining: number;
+  resetAt: Date;
+  retryAfter?: number;
+}
+
+const checkRateLimit = async (
+  supabase: any,
+  identifier: string,
+  functionName: string,
+  maxRequests: number = 30,
+  windowMs: number = 60 * 1000
+): Promise<RateLimitResult> => {
+  const now = new Date();
+  const windowStart = new Date(now.getTime() - windowMs);
+
+  try {
+    const { data: existing, error: fetchError } = await supabase
+      .from('rate_limits')
+      .select('*')
+      .eq('identifier', identifier)
+      .eq('function_name', functionName)
+      .single();
+
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      // Fail open if rate limit table doesn't exist or error
+      log('WARN', 'Rate limit check error, allowing request', { error: fetchError.message });
+      return {
+        allowed: true,
+        remaining: maxRequests,
+        resetAt: new Date(now.getTime() + windowMs),
+      };
+    }
+
+    if (!existing) {
+      // First request
+      const resetAt = new Date(now.getTime() + windowMs);
+      await supabase.from('rate_limits').insert({
+        identifier,
+        function_name: functionName,
+        request_count: 1,
+        window_start: windowStart.toISOString(),
+        reset_at: resetAt.toISOString(),
+      });
+      return { allowed: true, remaining: maxRequests - 1, resetAt };
+    }
+
+    const resetAt = new Date(existing.reset_at);
+    if (now > resetAt) {
+      // Window expired - reset
+      const newResetAt = new Date(now.getTime() + windowMs);
+      await supabase
+        .from('rate_limits')
+        .update({
+          request_count: 1,
+          window_start: now.toISOString(),
+          reset_at: newResetAt.toISOString(),
+        })
+        .eq('id', existing.id);
+      return { allowed: true, remaining: maxRequests - 1, resetAt: newResetAt };
+    }
+
+    if (existing.request_count >= maxRequests) {
+      // Rate limit exceeded
+      const retryAfter = Math.ceil((resetAt.getTime() - now.getTime()) / 1000);
+      return {
+        allowed: false,
+        remaining: 0,
+        resetAt,
+        retryAfter,
+      };
+    }
+
+    // Increment counter
+    await supabase
+      .from('rate_limits')
+      .update({ request_count: existing.request_count + 1 })
+      .eq('id', existing.id);
+
+    return {
+      allowed: true,
+      remaining: maxRequests - existing.request_count - 1,
+      resetAt,
+    };
+  } catch (error) {
+    // Fail open on error
+    log('WARN', 'Rate limit exception, allowing request', { error: String(error) });
+    return {
+      allowed: true,
+      remaining: maxRequests,
+      resetAt: new Date(now.getTime() + windowMs),
+    };
+  }
+};
+
 interface ChatRequest {
   workspace_id: string;
   lead_id: string;
@@ -143,12 +248,42 @@ serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Rate limiting: 30 requests per minute per workspace
     const body: ChatRequest = await req.json();
+    const rateLimitIdentifier = `workspace:${body.workspace_id}`;
+    const rateLimitResult = await checkRateLimit(supabase, rateLimitIdentifier, 'ai-chat', 30, 60 * 1000);
+    
+    if (!rateLimitResult.allowed) {
+      log('WARN', `[${requestId}] Rate limit exceeded`, {
+        identifier: rateLimitIdentifier,
+        retryAfter: rateLimitResult.retryAfter,
+      });
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Rate limit exceeded. Too many requests.',
+          retryAfter: rateLimitResult.retryAfter,
+        }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+            'Retry-After': String(rateLimitResult.retryAfter || 60),
+            'X-RateLimit-Limit': '30',
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': rateLimitResult.resetAt.toISOString(),
+          },
+        }
+      );
+    }
 
     log('INFO', `[${requestId}] Processing chat`, {
       workspace_id: body.workspace_id,
       lead_id: body.lead_id,
       conversation_id: body.conversation_id,
+      rateLimitRemaining: rateLimitResult.remaining,
     });
 
     // Get conversation history
@@ -244,7 +379,15 @@ serve(async (req) => {
         provider: 'lovable-ai',
         knowledge_used: !!knowledgeContext,
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+          'X-RateLimit-Limit': '30',
+          'X-RateLimit-Remaining': String(rateLimitResult.remaining),
+          'X-RateLimit-Reset': rateLimitResult.resetAt.toISOString(),
+        },
+      }
     );
 
   } catch (error) {
