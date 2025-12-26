@@ -118,3 +118,4 @@ console.log("API Key configured:", !!apiKey);
 - [Variáveis de Ambiente no Vite](https://vitejs.dev/guide/env-and-mode.html)
 
 
+

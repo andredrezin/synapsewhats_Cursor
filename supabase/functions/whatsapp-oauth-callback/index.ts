@@ -37,7 +37,7 @@ serve(async (req) => {
     });
 
     // Get the frontend URL for redirects
-    const frontendUrl = Deno.env.get("FRONTEND_URL") || supabaseUrl.replace(".supabase.co", ".lovable.app");
+    const frontendUrl = Deno.env.get("FRONTEND_URL") || Deno.env.get("SITE_URL") || "https://synapsecursor.vercel.app";
     log("DEBUG", `[${requestId}] Frontend URL`, { frontendUrl });
 
     if (error) {
@@ -186,7 +186,7 @@ serve(async (req) => {
 
   } catch (error: any) {
     log("ERROR", `[${requestId}] Unhandled error`, { error: error.message, stack: error.stack });
-    const frontendUrl = Deno.env.get("FRONTEND_URL") || "https://app.lovable.dev";
+    const frontendUrl = Deno.env.get("FRONTEND_URL") || Deno.env.get("SITE_URL") || "https://synapsecursor.vercel.app";
     return Response.redirect(`${frontendUrl}/dashboard/whatsapp?error=oauth_failed`);
   }
 });

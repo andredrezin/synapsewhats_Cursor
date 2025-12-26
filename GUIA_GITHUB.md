@@ -153,3 +153,4 @@ git config --global user.email "seu.email@exemplo.com"
 Seu projeto está conectado ao GitHub e pronto para desenvolvimento colaborativo!
 
 
+

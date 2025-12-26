@@ -231,3 +231,4 @@ R: Depende do seu objetivo. Lovable para rapidez, Git local para controle.
 R: Não! Push é opcional. Commits locais já salvam o histórico.
 
 
+

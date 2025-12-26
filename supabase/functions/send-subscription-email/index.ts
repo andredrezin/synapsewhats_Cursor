@@ -51,7 +51,7 @@ const getEmailContent = (type: EmailRequest["type"], planName?: string, subscrip
             </div>
             
             <div style="text-align: center; margin-top: 30px;">
-              <a href="${Deno.env.get("SITE_URL") || "https://leadflux.lovable.app"}/dashboard" 
+              <a href="${Deno.env.get("SITE_URL") || Deno.env.get("FRONTEND_URL") || "https://synapsecursor.vercel.app"}/dashboard" 
                  style="display: inline-block; background: #667eea; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600;">
                 Acessar Dashboard
               </a>
@@ -82,7 +82,7 @@ const getEmailContent = (type: EmailRequest["type"], planName?: string, subscrip
             
             <div style="text-align: center; margin-top: 30px;">
               <p style="color: #6c757d; margin-bottom: 20px;">Mudou de ideia? Você pode reativar sua assinatura a qualquer momento.</p>
-              <a href="${Deno.env.get("SITE_URL") || "https://leadflux.lovable.app"}/dashboard/pricing" 
+              <a href="${Deno.env.get("SITE_URL") || Deno.env.get("FRONTEND_URL") || "https://synapsecursor.vercel.app"}/dashboard/pricing" 
                  style="display: inline-block; background: #667eea; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600;">
                 Reativar Assinatura
               </a>
@@ -108,7 +108,7 @@ const getEmailContent = (type: EmailRequest["type"], planName?: string, subscrip
               </p>
               
               <div style="text-align: center;">
-                <a href="${Deno.env.get("SITE_URL") || "https://leadflux.lovable.app"}/dashboard/pricing" 
+                <a href="${Deno.env.get("SITE_URL") || Deno.env.get("FRONTEND_URL") || "https://synapsecursor.vercel.app"}/dashboard/pricing" 
                    style="display: inline-block; background: #dc3545; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600;">
                   Atualizar Pagamento
                 </a>
@@ -133,7 +133,7 @@ const getEmailContent = (type: EmailRequest["type"], planName?: string, subscrip
                 Como membro da equipe, você poderá gerenciar leads, conversas e acompanhar métricas importantes.
               </p>
               
-              <a href="${inviteLink || `${Deno.env.get("SITE_URL") || "https://leadflux.lovable.app"}/auth`}" 
+              <a href="${inviteLink || `${Deno.env.get("SITE_URL") || Deno.env.get("FRONTEND_URL") || "https://synapsecursor.vercel.app"}/auth`}" 
                  style="display: inline-block; background: #667eea; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600;">
                 Aceitar Convite
               </a>
@@ -160,7 +160,7 @@ const getEmailContent = (type: EmailRequest["type"], planName?: string, subscrip
                 Seu pagamento foi processado com sucesso. Continue aproveitando todos os recursos do seu plano ${planName}.
               </p>
               
-              <a href="${Deno.env.get("SITE_URL") || "https://leadflux.lovable.app"}/dashboard" 
+              <a href="${Deno.env.get("SITE_URL") || Deno.env.get("FRONTEND_URL") || "https://synapsecursor.vercel.app"}/dashboard" 
                  style="display: inline-block; background: #28a745; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600;">
                 Acessar Dashboard
               </a>
